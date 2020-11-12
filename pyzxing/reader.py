@@ -36,24 +36,28 @@ class BarCodeReader():
                 print("Download completed.")
             self.lib_path = save_path
 
-    def decode(self, filename_pattern):
-        filenames = glob.glob(filename_pattern)
+    def decode(self, filename_pattern, try_harder = False, qr_only = False):
+        filenames = glob.glob(os.path.abspath(filename_pattern))
         if len(filenames) == 0:
             print("File not found!")
             results = None
 
         elif len(filenames) == 1:
-            results = self._decode(filenames[0].replace('\\', '/'))
+            results = self._decode(filenames[0].replace('\\', '/'), try_harder)
 
         else:
             results = Parallel(n_jobs=-1)(
-                delayed(self._decode)(filename.replace('\\', '/'))
+                delayed(self._decode)(filename.replace('\\', '/'), try_harder)
                 for filename in filenames)
 
         return results
 
-    def _decode(self, filename):
-        cmd = ' '.join([self.command, self.lib_path, filename, '--multi'])
+    def _decode(self, filename, try_harder = False):
+        cmd = ' '.join([self.command, self.lib_path, 'file:///' + filename, '--multi'])
+        # Try harder on searching code in image
+        if try_harder:
+            cmd += ' --try_harder'
+        
         (stdout, _) = subprocess.Popen(cmd,
                                        stdout=subprocess.PIPE,
                                        universal_newlines=True,
